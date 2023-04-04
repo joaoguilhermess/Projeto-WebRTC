@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Teste WEBRTC</title>
+</head>
+<body>
+	<div id="videosdiv">
+		<video id="localvideo"></video>
+	</div>
+	<div id="psdiv" style="position: fixed; bottom: 0; left: 0; height: 50vh; width: 100vw"></div>
+</body>
+	<script type="text/javascript">
+		var pl = [];
+		function createP() {
+			var p = document.createElement("p");
+			pl.push(p);
+			p.style.float = "left";
+			p.style.left = "0";
+			p.style.bottom = "0";
+			p.style.backgroundColor = "#252525";
+			p.style.padding = "15px";
+			p.style.borderTopRightRadius = "5px";
+			p.style.maxHeight = "50vh";
+			p.style.height = "50vh";
+			for (var i = 0; i < pl.length; i++) {
+				pl[i].style.width = Math.floor(100/pl.length) + "%";
+			}
+			p.style.overflowY = "scroll";
+			p.style.color = "#e0e0e0";
+			p.style.boxSizing = "border-box";
+			p.onclick = function(event) {
+				navigator.clipboard.writeText(p.innerText);
+			}
+			document.querySelector("#psdiv").append(p);
+			return p;
+		}
+
+		var poffer = createP();
+
+		var pcandidate = createP();
+
+		var pdesc = createP();
+
+		var streamlist = [];
+
+		var answerlist = [];
+
+		var videoslist = [];
+
+		var localvideo = document.getElementById("localvideo");
+		localvideo.onplay = function() {
+			localvideo.style.borderWidth = "1.5px";
+		}
+		localvideo.playsInline = true;
+		localvideo.style.borderWidth = "0";
+		localvideo.style.borderStyle = "solid";
+		localvideo.style.borderColor = "#f00000";
+		localvideo.style.height = "auto";
+		localvideo.style.width = "30vw";
+		localvideo.autoplay = true;
+		localvideo.muted = true;
+
+		var peer = new RTCPeerConnection(null);
+
+		peer.onicecandidate = function(event) {
+			// console.log("candidate", JSON.stringify(event.candidate));
+			if (!event.candidate) {
+				return;
+			}
+			pcandidate.innerText = JSON.stringify(event.candidate);
+		}
+
+		// try {
+		// 	peer.addIceCandidate(undefined);
+		// } catch (e) {
+		// 	console.log("erro no undefined");
+		// }
+		peer.ontrack = function(event) {
+			var video = document.createElement("video");
+			video.style.borderWidth = "0";
+			video.srcObject = event.streams[0];
+			video.oncanplay = function() {
+				video.style.borderWidth = "1.5px";
+				video.play();
+			}
+			video.playsInline = true;
+			video.style.borderStyle = "solid";
+			video.style.borderColor = "#00f000";
+			video.autoplay = true;
+			video.muted = true;
+			video.style.float = "left";
+			video.style.height = "auto";
+			video.style.width = "30vw";
+
+			document.body.append(video);
+
+			videoslist.push(video);
+
+			event.streams[0].onactive = function(event) {
+				console.log("onactive", event);
+			}
+
+			console.log("ontrack", event.streams[0]);
+			streamlist.push(event.streams[0]);
+		}
+		peer.oniceconnectionstatechange = function(event) {
+			console.log("state", event);
+		}
+		// peer.onaddstream = function(event) {
+		// 	var video = document.createElement("video");
+		// 	video.style.borderWidth = "0";
+		// 	video.srcObject = event.stream;
+		// 	video.onplay = function() {
+		// 		video.style.borderWidth = "1.5px";
+		// 	}
+		// 	video.style.borderStyle = "solid";
+		// 	video.style.borderColor = "#00f000";
+		// 	video.autoplay = true;
+		// 	video.muted = true;
+		// 	video.style.float = "left";
+		// 	video.style.height = "auto";
+		// 	video.style.width = "30vw";
+
+		// 	document.querySelector("#videosdiv").append(p);
+
+		// 	videoslist.push(video);
+
+		// 	console.log("addstream", event.stream);
+		// 	streamlist.push(event.stream);
+			
+		// }
+		peer.onremovestream = function(event) {
+			console.log("removestream", event);
+		}
+		peer.onconnectionstatechange = function(event) {
+			console.log("conectado", event.connectionState === "connected");
+		}
+		peer.onnegotiationneeded = function(event) {
+			console.log(this)
+			console.log("negotiation", event);
+		}
+
+		async function candidatar(candidate) {
+			await peer.addIceCandidate(new RTCIceCandidate(candidate));
+			console.log("candidatando", candidate);
+		}
+
+		async function ligar() {
+			var offer = await peer.createOffer();
+			await peer.setLocalDescription(offer);
+			poffer.innerText = JSON.stringify(offer);
+		}
+
+		async function connectar(answer) {
+			await peer.setRemoteDescription(new RTCSessionDescription(answer));
+			pdesc.innerText = JSON.stringify(answer);
+		}
+
+		async function atender(offer) {
+			await peer.setRemoteDescription(new RTCSessionDescription(offer));
+			poffer.innerText = JSON.stringify(offer);
+			var answer = await peer.createAnswer();
+			await peer.setLocalDescription(answer);
+			pdesc.innerText = JSON.stringify(answer);
+			console.log("answer", answer);
+			answerlist.push(answer);
+		}
+		
+		navigator.getUserMedia({video: true, audio: false}, function(stream) {
+			var tracks = stream.getTracks();
+			for (var i = 0; i < tracks.length; i++) {
+				peer.addTrack(tracks[i], stream);
+			}
+			// peer.addStream(stream);
+			localvideo.srcObject = stream;
+		}, function(e) {
+			console.log(e);
+		});
+	</script>
+</html>

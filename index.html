@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Projeto WebRTC</title>
+	<meta charset="UTF-8">
+	<style type="text/css">
+		@font-face {
+			font-family: "Whitney";
+			font-style: normal;
+			text-rendering: optimizeLegibility;
+			src: local("Whitney Medium"), url("whitneymedium.woff") format("woff");
+		}
+		* {
+			font-size: 14px;
+			font-weight: 500;
+			transition-duration: 0.5s;
+			box-sizing: border-box;
+			font-family: Whitney;
+		}
+
+		html, body {
+			min-height: 100vh;
+			max-width: 100vw;
+			margin: 0;
+			padding: 0;
+		}
+
+		input {
+			border-top: 0;
+			border-left: 0;
+			border-right: 0;
+			padding: 0.5em;
+			padding-left: 1em;
+			padding-right: 1em;
+		}
+
+		input[type=submit] {
+			cursor: pointer;
+			background: #25252570;
+			color: #909090;
+			border-bottom-style: solid;
+			border-bottom-width: 1.5px;
+			border-bottom-color: #252525;
+		}
+
+		input[type=submit]:hover {
+			border-bottom-color: #f00000;
+			color: #ffffffd0;
+			background: #25252590;
+		}
+
+		input[type=text] {
+			outline: 0;
+			border-top-right-radius: 5%;
+			border-top-left-radius: 5%;
+			border-bottom-style: solid;
+			border-bottom-width: 1.5px;
+			border-bottom-color: #353535;
+			color: #ffffffd0;
+			background: #25252570;
+		}
+
+		input[type=text]:focus:hover, input[type=text]:focus {
+			border-bottom-color: #ff0000;
+		}
+
+		input[type=text]:hover {
+			border-bottom-color: #606060;
+		}
+
+		input[type=text]::placeholder {
+			transition-duration: 0.5s;
+			color: #707070;
+		}
+
+		input[type=text]:focus::placeholder, input[type=text]:hover::placeholder {
+			color: #a0a0a0;
+		}
+
+		video {
+
+		}
+
+		body {
+			background-color: #181818;
+		}
+
+		@keyframes ClientDown {
+			0% {
+				transform: translate(-50%, calc(-50% - 10vh));
+				opacity: 0;
+			}
+			100% {
+				transform: translate(-50%, -50%);
+				opacity: 1;
+			}
+		}
+
+		@keyframes ControlsDown {
+			0% {
+				/*transform: translateY(-200%);*/
+				opacity: 0;
+			}
+			100% {
+				opacity: 1;
+			}
+		}
+
+		@keyframes RoomBottomDown {
+			0% {
+				transform: translate(-50%, -200%);
+				opacity: 0;
+			}
+			100% {
+				/*transform: translateY(-50%, 0%);*/
+				opacity: 1;
+			}
+		}
+
+		.client {
+			animation-name: ClientDown;
+			animation-duration: 0.65s;
+			border-bottom-style: solid;
+			border-bottom-width: 1.5px;
+			border-bottom-color: #252525;
+			/*background-color: #f0000090;*/
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			width: 85%;
+			min-height: 50%;
+			transition: 0;
+			transform: translate(-50%, -50%);
+		}
+
+		.client-inputs, .client-video {
+			position: absolute;
+			top: 50%;
+			transition: 0;
+			transform: translateY(-50%);
+		}
+
+		.client-name, .client-room {
+			width: 100%;
+			margin-top: 5%;
+			margin-bottom: 5%;
+		}
+ 
+		.client-video {
+			margin: 0;
+			border: 0;
+			padding: 0;
+			max-width: 50%;
+			left: 0;
+		}
+
+		.client-inputs {
+			left: 50%;
+			width: 50%;
+			padding: 5%;
+		}
+
+		.success {
+			animation-name: RoomBottomDown;
+			animation-duration: 0.65s;
+			color: #f0f0f0;
+			position: absolute;
+			top: 5%;
+			left: 50%;
+			transition-duration: 0;
+			transform: translateX(-50%);
+		}
+
+		.room-bottom {
+			animation-name: RoomBottomDown;
+			animation-duration: 0.65s;
+			position: fixed;
+			margin-left: auto;
+			margin-right: auto;
+			bottom: 5vh;
+			left: 50%;
+			transition-duration: 0;
+			transform: translateX(-50%);
+		}
+
+		.call, .join {
+			position: fixed;
+			width: 100%;
+			height: 100%;
+		}
+
+		.call, .room-bottom, .join {
+			display: none;
+		}
+
+		.join {
+			animation-name: JoinDown;
+			animation-duration: 0.65s;
+			left: 50%;
+			transition-duration: 0;
+			transform: translateX(-50%);
+			max-width: 1024px;
+		}
+
+		.videos-container {
+			position: absolute;
+			width: 100vw;
+			height: 100vh;
+		}
+
+		.debug, .controls {
+			animation-name: ControlsDown;
+			animation-duration: 0.65s;
+			max-width: 180px;
+			max-height: 70px;
+			height: 64px;
+			position: fixed;
+		}
+
+		.debug {
+			padding: 1em;
+			left: 0;
+			bottom: 0;
+			width: auto;
+			background: #25252570;
+		}
+
+		.controls {
+			width: 180px;
+			right: 5vh;
+			bottom: 5vh;
+		}
+
+		.toggle-video, .toggle-audio {
+			text-align: left;
+			height: 50%;
+			width: 100%;
+			float: bottom;
+		}
+
+		.pname {
+			position: absolute;
+			background: #25252570;
+			color: #f0f0f0;
+			left: 15px;
+			bottom: 15px;
+		}
+
+	</style>
+</head>
+<body>
+	<section class="call">
+		<div class="videos-container"></div>
+		<div class="debug"></div>
+		<div class="controls">
+			<input type="submit" class="toggle-video" value="Vídeo">
+			<input type="submit" class="toggle-audio" value="Áudio">
+		</div>
+	</section>
+	<section class="join">
+		<div class="client">
+			<video class="client-video"></video>
+			<div class="client-inputs">
+				<div class="success"></div>
+				<input type="text" class="client-name" placeholder="Type Your Name">
+				<input type="text" class="client-room" placeholder="Enter Room Name">
+			</div>
+		</div>
+	</section>
+	<section class="room-bottom">
+		<input type="submit" class="create-button" value="Create Room">
+		<input type="submit" class="join-button" value="Join Room">
+		<input type="submit" class="leave-button" value="Leave Room">
+	</section>
+	<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript">
+		const IceServers = null;
+
+		const VideosContainer = document.querySelector(".videos-container");
+		const CallSection = document.querySelector(".call");
+		const JoinSection = document.querySelector(".join");
+		const RoomBottom = document.querySelector(".room-bottom");
+		const SucessDiv = document.querySelector(".success");
+		const ClientVideo = document.querySelector(".client-video");
+		const ClientName = document.querySelector(".client-name");
+		const RoomName = document.querySelector(".client-room");
+		const CreateButton = document.querySelector(".create-button");
+		const JoinButton = document.querySelector(".join-button");
+		const LeaveButton = document.querySelector(".leave-button");
+		const ToggleVideo = document.querySelector(".toggle-video");
+		const ToggleAudio = document.querySelector(".toggle-audio");
+		const DebugDiv = document.querySelector(".debug");
+
+		CreateButton.onclick = function(event) {
+			SetName();
+			CreateRoom();
+		}
+
+		JoinButton.onclick = function(event) {
+			SetName();
+			JoinRoom();
+		}
+
+		LeaveButton.onclick = function(event) {
+			LeaveRoom();
+		}
+
+		ToggleVideo.onclick = function(event) {
+
+		}
+
+		ToggleAudio.onclick = function(event) {
+
+		}
+
+	</script>
+	<script type="text/javascript">
+		function CreatePeer(id, name) {
+			console.log("CreatePeer(" + id + ", " + name + ")");
+			if (!peers[id]) {
+				var peer = new RTCPeerConnection(IceServers);
+				peer.onicecandidate = HandleIceCandidate;
+				peer.ontrack = HandleOnTrack;
+				peer.onconnectionstatechange = HandleConnectionChange;
+				peer.onnegotiationneeded = HandleNegotiationNedded;
+
+				peer.socketid = id;
+
+				peer.name = name;
+
+				var tracks = localstream.getTracks();
+				for (var i = 0; i < tracks.length; i++) {
+					peer.addTrack(tracks[i], localstream);
+				}
+
+				peers[id] = peer;
+				return peer;
+			} else {
+				return peers[id];
+			}
+		}
+
+		function DeletePeer(id) {
+			delete peers[id];
+		}
+
+		function CreateVideo(stream, id, muted, name) {
+			console.log("CreateVideo(" + stream + ", " + id + ", " + muted + ")");
+			var video = document.createElement("video");
+			video.muted = muted;
+			video.autoplay = true;
+			video.srcObject = stream;
+
+			var pname = document.createElement("p");
+			pname.classList = "pname";
+
+			if (id) {
+				video.socketid = id;
+				video.onmouseover = function(event) {
+					DebugPeer(event.srcElement.socketid);
+				}
+				pname.textContent = name;
+				peers[id].srcvideo = video;
+				// video.style.borderBottomColor = "#00f000";
+			} else {
+				video.style.borderBottomColor = "#f00000";
+				pname.textContent = "You";
+			}
+
+			video.append(pname);
+			VideosContainer.append(video);
+
+			// for (var i = 0; i < VideosContainer.children.length; i++) {
+			// 	VideosContainer.children[i].style.height = 
+			// 		Math.floor(100/VideosContainer.children.length) + "vw";
+			// }
+
+			video.oncanplay = function() {
+				video.style.borderBottomWidth = "1.5px";
+				video.play();
+			}
+			video.playsInline = true;
+			video.style.borderBottomStyle = "solid";
+			video.style.width = "300px";
+
+			return video;
+		}
+
+		function RemoveVideo(id) {
+			var video = peers[id].srcvideo;
+			console.log("RemoveVideo(" + video + ")");
+			video.remove();
+
+			// for (var i = 0; i < VideosContainer.children.length; i++) {
+			// 	VideosContainer.children[i].style.height = 
+			// 		Math.floor(100/VideosContainer.length) + "vw";
+			// }
+
+		}
+
+		function DebugPeer(id) {
+			console.log("DebugPeer(" + id + ")");
+			var text;
+			text += "ID: " + id + "\n";
+			text += "Name: " + peers[id].name + "\n";
+
+			console.log(peers[id]);
+
+			DebugDiv.textContent = text;
+		}
+
+		function SendMessage(message) {
+			console.log("SendMessage(" + message + ")");
+			socket.emit("message", message, function(success) {
+				if (success) {
+
+				} else {
+
+				}
+			});
+		}
+
+		function SendIceCandidate(id, candidate) {
+			console.log("SendIceCandidate(" + id + ", " + candidate + ")");
+			socket.emit("icecandidate", id, candidate);
+		}
+
+		async function CreateOffer(id) {
+			console.log("CreateOffer(" + id + ")");
+			if (peers[id]) {
+				var offer = await peers[id].createOffer();
+				SetLocalDescription(id, offer);
+				socket.emit("offer", id, offer, function(success) {
+					console.log("Offer Sucess: " + success);
+				});
+				return offer;
+			} else {
+				return null;
+			}
+		}
+
+		async function CreateAnswer(id) {
+			console.log("CreateAnswer(" + id + ")");
+			if (peers[id]) {
+				var answer = await peers[id].createAnswer();
+				SetLocalDescription(id, answer);
+				socket.emit("answer", id, answer, function(success) {
+					console.log("Answer Sucess: " + success);
+				});
+				return answer;
+			} else {
+				return null;
+			}
+		}
+
+		function SetLocalDescription(id, description) {
+			console.log("SetLocalDescription(" + id + ", " + description + ")");
+			peers[id].setLocalDescription(new RTCSessionDescription(description));
+		}
+
+		function SetRemoteDescription(id, description) {
+			console.log("SetRemoteDescription(" + id + ", " + description + ")");
+			peers[id].setRemoteDescription(new RTCSessionDescription(description));
+		}
+
+		function HandleIceCandidate(event) {
+			console.log("HandleIceCandidate(" + event + ")");
+			if (event.candidate) {
+				SendIceCandidate(event.srcElement.socketid, event.candidate);
+			}
+		}
+
+		function HandleOnTrack(event) {
+			console.log("HandleOnTrack(" + event + ")");
+			var id = event.srcElement.socketid;
+			var name = event.srcElement.name;
+			var remotevideo = CreateVideo(event.streams[0], id, false, name);
+		}
+
+		function HandleConnectionChange(event) {
+			console.log("HandleConnectionChange(" + event + ")");
+			console.log("HandleConnectionChange", event);
+			var peer = event.srcElement;
+			var id = peer.socketid;
+			console.log("Connection Status Change", "ID: " + id, "Status: " + peer.connectionState);
+			if (peer.connectionState == "failed" || peer.connectionState == "disconnected") {
+				// RemoveVideo(id);
+				// delete peer;
+			}
+		}
+
+		function HandleNegotiationNedded(event) {
+			console.log("HandleNegotiationNedded(" + event + ")");
+			var id = event.srcElement.socketid;
+			console.log("Negotiation Nedded", "ID: " + id);
+		}
+
+		function ToggleHideCall(hidden) {
+			if (hidden) {
+				CallSection.style.display = "block";
+			} else {
+				CallSection.style.display = "none";
+			}
+		}
+
+		function ToggleHideJoin(hidden) {
+			if (hidden) {
+				JoinSection.style.display = "block";
+			} else {
+				JoinSection.style.display = "none";
+			}
+		}
+
+		function ToggleHideRoomBottom(hidden) {
+			if (hidden) {
+				RoomBottom.style.display = "block";
+			} else {
+				RoomBottom.style.display = "none";
+			}
+		}
+
+		function SetName() {
+			console.log("SetName()");
+			var Name = ClientName.value;
+			socket.emit("name", Name, function(success) {
+				if (success) {
+					SucessDiv.textContent = "Success";
+				} else {
+					SucessDiv.textContent = "Fail";
+				}
+				setTimeout(function () {
+					SucessDiv.textContent = "";
+				}, 3000);
+			});
+			ClientName.value = "";
+		}
+
+		function CreateRoom() {
+			console.log("CreateRoom()");
+			var Name = RoomName.value;
+			socket.emit("createroom", Name, function(success) {
+				if (success) {
+					SucessDiv.textContent = "Success";
+					setTimeout(function () {
+						ToggleHideJoin(false);
+						ToggleHideCall(true);
+					}, 1500);
+				} else {
+					SucessDiv.textContent = "Fail";
+				}
+				setTimeout(function () {
+					SucessDiv.textContent = "";
+				}, 3000);
+			});
+			RoomName.value = "";
+		}
+
+		function JoinRoom() {
+			console.log("JoinRoom()");
+			var Name = RoomName.value;
+			socket.emit("joinroom", Name, function(success) {
+				if (success) {
+					SucessDiv.textContent = "Success";
+					setTimeout(function () {
+						ToggleHideJoin(false);
+						ToggleHideCall(true);
+					}, 1500);
+				} else {
+					SucessDiv.textContent = "Fail";
+				}
+				setTimeout(function () {
+					SucessDiv.textContent = "";
+				}, 3000);
+			});
+			RoomName.value = "";
+		}
+
+		function LeaveRoom() {
+			console.log("LeaveRoom()");
+			socket.emit("leaveroom");
+		}
+	</script>
+	<script type="text/javascript">
+		const socket = io.connect();
+		var localstream;
+		var peers = {};
+
+		navigator.getUserMedia({video:true, audio: false}, function(stream) {
+			localstream = stream;
+
+			ClientVideo.srcObject = stream;
+			ClientVideo.oncanplay = function() {
+				ClientVideo.play();
+			}
+			CreateVideo(stream);
+
+			ToggleHideJoin(true);
+			ToggleHideRoomBottom(true);
+			// ToggleHideCall(true);
+
+		}, function(e) {
+			SendMessage(e.toString());
+		});
+
+	</script>
+	<script type="text/javascript">
+		socket.on("join", async function(id, name) {
+			console.log("Socket Join", id, name);
+			CreatePeer(id, name);
+			CreateOffer(id);
+		});
+
+		socket.on("leave", async function(id) {
+			console.log("Socket Leave", id);
+			console.log("Left", "ID: " + id);
+			RemoveVideo(id);
+			DeletePeer(id);
+		});
+
+		socket.on("offer", async function(id, name, offer) {
+			console.log("Socket Offer", id, name, offer);
+			if (!peers[id]) {
+				CreatePeer(id, name);
+			}
+			SetRemoteDescription(id, offer);
+			CreateAnswer(id);
+		});
+
+		socket.on("answer", async function(id, name, answer) {
+			console.log("Socket Answer", id, name, answer);
+			if (!peers[id]) {
+				CreatePeer(id, name);
+			}
+			SetRemoteDescription(id, answer);
+		});
+
+		socket.on("icecandidate", async function(id, icecandidate) {
+			console.log("Socket IceCandidate", id, icecandidate);
+			peers[id].addIceCandidate(new RTCIceCandidate(icecandidate));
+		});
+	</script>
+</body>
+</html>
